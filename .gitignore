@@ -1,9 +1,3 @@
-
----
-
-### 5.4 Contenido inicial de `.gitignore`
-
-```gitignore
 # Virtual environment
 .venv/
 venv/
@@ -25,9 +19,7 @@ __pycache__/
 Thumbs.db
 
 # Reports and generated files
-reports/*.html
-reports/*.png
-reports/*.csv
+reports/
 
 # IDEs and editors
 .vscode/

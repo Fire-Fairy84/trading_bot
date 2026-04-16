@@ -101,13 +101,13 @@ def run_strategy(
     dataframe: pd.DataFrame,
     strategy_name: str,
     config: BacktestConfig,
-) -> tuple[pd.Series, dict[str, Any]]:
+) -> tuple[Backtest, pd.Series, dict[str, Any]]:
     """Ejecuta una estrategia concreta sobre un DataFrame OHLCV."""
     strategy_class = STRATEGY_MAP[strategy_name]
     backtest = build_backtest(dataframe, strategy_class, config)
     stats = backtest.run()
     metrics = extract_metrics(stats)
-    return stats, metrics
+    return backtest, stats, metrics
 
 
 def run_strategy_suite(
@@ -117,7 +117,7 @@ def run_strategy_suite(
     """Ejecuta las tres estrategias sobre un único dataset."""
     results: list[dict[str, Any]] = []
     for strategy_name in STRATEGY_MAP:
-        _, metrics = run_strategy(dataframe, strategy_name, config)
+        _, _, metrics = run_strategy(dataframe, strategy_name, config)
         results.append({"strategy": strategy_name, **metrics})
     return results
 
