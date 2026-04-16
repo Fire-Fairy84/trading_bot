@@ -133,12 +133,18 @@ class RiskManagedSwingStrategy(Strategy):
     stop_mode = "atr"  # "atr" o "percent"
     stop_loss_pct = 0.08
     atr_multiple = 2.5
+    use_rsi_exit = True
+    use_trailing_stop = False
+    trailing_atr_multiple = 3.0
 
     risk_per_trade = 0.01
     entry_slippage = 0.0005
     min_position_size = 1
 
     def init(self) -> None:
+        # Guardamos el mejor cierre desde la entrada para poder mover
+        # un trailing stop solo en dirección favorable.
+        self.highest_close_since_entry: float | None = None
         self.sma_fast = self.I(sma, self.data.Close, self.fast_period)
         self.sma_slow = self.I(sma, self.data.Close, self.slow_period)
         self.rsi_value = self.I(rsi_wilder, self.data.Close, self.rsi_period)
@@ -158,6 +164,13 @@ class RiskManagedSwingStrategy(Strategy):
             return estimated_entry - (current_atr * self.atr_multiple)
 
         raise ValueError("stop_mode debe ser 'percent' o 'atr'.")
+
+    def _entry_signal_is_ready(self, price: float, sma_fast_now: float, sma_slow_now: float) -> bool:
+        """Mantiene la condición de entrada legible y fácil de modificar."""
+        uptrend = sma_fast_now > sma_slow_now
+        price_above_fast_sma = price > sma_fast_now
+        momentum_recovered = crossed_above_level(self.rsi_value, self.rsi_entry)
+        return uptrend and price_above_fast_sma and momentum_recovered
 
     def _risk_based_position_size(self, estimated_entry: float, stop_price: float) -> int:
         """Calcula unidades máximas arriesgando como mucho el 1% del equity.
@@ -185,6 +198,42 @@ class RiskManagedSwingStrategy(Strategy):
 
         return size
 
+    def _update_trailing_stop(self, price: float) -> None:
+        """Ajusta un trailing stop sencillo basado en ATR.
+
+        Idea educativa:
+        - no intenta adivinar el techo
+        - solo va subiendo el stop si el precio nos favorece
+        - nunca lo baja, para no ampliar el riesgo una vez dentro
+        """
+        if not self.position or not self.use_trailing_stop or self.stop_mode != "atr":
+            return
+
+        current_atr = self.atr_value[-1]
+        if np.isnan(current_atr) or current_atr <= 0:
+            return
+
+        if self.highest_close_since_entry is None:
+            self.highest_close_since_entry = price
+        else:
+            self.highest_close_since_entry = max(self.highest_close_since_entry, price)
+
+        new_stop = self.highest_close_since_entry - (current_atr * self.trailing_atr_multiple)
+        open_trades = list(self.trades)
+        if not open_trades:
+            return
+
+        current_stop = open_trades[0].sl
+        if current_stop is None or new_stop > current_stop:
+            for trade in open_trades:
+                trade.sl = new_stop
+
+    def _should_exit_position(self, price: float, sma_fast_now: float, rsi_now: float) -> bool:
+        """Separa la lógica de salida para comparar variantes con claridad."""
+        trend_lost = price < sma_fast_now
+        momentum_lost = self.use_rsi_exit and rsi_now < self.rsi_exit
+        return trend_lost or momentum_lost
+
     def next(self) -> None:
         price = float(self.data.Close[-1])
         sma_fast_now = self.sma_fast[-1]
@@ -194,12 +243,8 @@ class RiskManagedSwingStrategy(Strategy):
         if any(np.isnan(value) for value in [sma_fast_now, sma_slow_now, rsi_now]):
             return
 
-        uptrend = sma_fast_now > sma_slow_now
-        price_above_fast_sma = price > sma_fast_now
-        momentum_recovered = crossed_above_level(self.rsi_value, self.rsi_entry)
-
         if not self.position:
-            if not (uptrend and price_above_fast_sma and momentum_recovered):
+            if not self._entry_signal_is_ready(price, sma_fast_now, sma_slow_now):
                 return
 
             estimated_entry = price * (1 + self.entry_slippage)
@@ -212,10 +257,51 @@ class RiskManagedSwingStrategy(Strategy):
                 return
 
             self.buy(size=size, sl=stop_price)
+            self.highest_close_since_entry = price
             return
 
-        trend_lost = price < sma_fast_now
-        momentum_lost = rsi_now < self.rsi_exit
+        self._update_trailing_stop(price)
 
-        if trend_lost or momentum_lost:
+        if self._should_exit_position(price, sma_fast_now, rsi_now):
             self.position.close()
+            self.highest_close_since_entry = None
+
+
+class FlexibleEntrySwingStrategy(RiskManagedSwingStrategy):
+    """Versión con entrada un poco menos estricta.
+
+    Pasamos de RSI 55 a 52 para aceptar recuperaciones de momentum
+    algo antes. Eso suele aumentar el número de señales.
+    """
+
+    rsi_entry = 52
+
+
+class CalmerExitSwingStrategy(RiskManagedSwingStrategy):
+    """Versión con salida menos agresiva.
+
+    En vez de salir por RSI "demasiado pronto", dejamos que el stop ATR
+    y la pérdida de tendencia hagan más trabajo. Añadimos además un
+    trailing stop sencillo para proteger parte del avance.
+    """
+
+    use_rsi_exit = False
+    use_trailing_stop = True
+    trailing_atr_multiple = 3.0
+
+
+class WiderAtrStopSwingStrategy(RiskManagedSwingStrategy):
+    """Versión con stop ATR más amplio para evitar ruido normal."""
+
+    atr_multiple = 3.0
+
+
+class PercentStopSwingStrategy(RiskManagedSwingStrategy):
+    """Alternativa opcional con stop porcentual fijo.
+
+    No se incluye en la comparativa principal para evitar demasiadas
+    variantes, pero queda disponible para aprendizaje.
+    """
+
+    stop_mode = "percent"
+    stop_loss_pct = 0.10

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from strategy import RiskManagedSwingStrategy
+from strategy import CalmerExitSwingStrategy, RiskManagedSwingStrategy, WiderAtrStopSwingStrategy
 
 
 class BrokerStub:
@@ -57,3 +57,12 @@ def test_risk_based_position_size_returns_zero_when_below_minimum() -> None:
     strategy.min_position_size = 5
     size = strategy._risk_based_position_size(estimated_entry=100, stop_price=98)
     assert size == 0
+
+
+def test_calmer_exit_variant_disables_rsi_exit_and_uses_trailing_stop() -> None:
+    assert CalmerExitSwingStrategy.use_rsi_exit is False
+    assert CalmerExitSwingStrategy.use_trailing_stop is True
+
+
+def test_wider_atr_variant_uses_larger_multiple() -> None:
+    assert WiderAtrStopSwingStrategy.atr_multiple == 3.0

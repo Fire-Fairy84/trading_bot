@@ -8,7 +8,15 @@ from typing import Any
 import pandas as pd
 from backtesting import Backtest
 
-from strategy import BuyAndHoldStrategy, RiskManagedSwingStrategy, SmaCrossBenchmarkStrategy
+from strategy import (
+    BuyAndHoldStrategy,
+    CalmerExitSwingStrategy,
+    FlexibleEntrySwingStrategy,
+    PercentStopSwingStrategy,
+    RiskManagedSwingStrategy,
+    SmaCrossBenchmarkStrategy,
+    WiderAtrStopSwingStrategy,
+)
 
 
 @dataclass(frozen=True)
@@ -24,9 +32,20 @@ class BacktestConfig:
 
 STRATEGY_MAP = {
     "swing_risk_managed": RiskManagedSwingStrategy,
+    "swing_flexible_entry": FlexibleEntrySwingStrategy,
+    "swing_calmer_exit": CalmerExitSwingStrategy,
+    "swing_wider_atr_stop": WiderAtrStopSwingStrategy,
+    "swing_percent_stop": PercentStopSwingStrategy,
     "buy_and_hold": BuyAndHoldStrategy,
     "sma_cross_benchmark": SmaCrossBenchmarkStrategy,
 }
+
+SWING_VARIANT_NAMES = [
+    "swing_risk_managed",
+    "swing_flexible_entry",
+    "swing_calmer_exit",
+    "swing_wider_atr_stop",
+]
 
 
 def build_backtest(
@@ -113,10 +132,12 @@ def run_strategy(
 def run_strategy_suite(
     dataframe: pd.DataFrame,
     config: BacktestConfig,
+    strategy_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    """Ejecuta las tres estrategias sobre un único dataset."""
+    """Ejecuta un conjunto concreto de estrategias sobre un dataset."""
     results: list[dict[str, Any]] = []
-    for strategy_name in STRATEGY_MAP:
+    strategy_names = strategy_names or list(STRATEGY_MAP)
+    for strategy_name in strategy_names:
         _, _, metrics = run_strategy(dataframe, strategy_name, config)
         results.append({"strategy": strategy_name, **metrics})
     return results
@@ -125,6 +146,7 @@ def run_strategy_suite(
 def run_all_tests(
     data_dict: dict[str, pd.DataFrame],
     config: BacktestConfig | None = None,
+    strategy_names: list[str] | None = None,
 ) -> pd.DataFrame:
     """Corre in-sample y out-of-sample sobre múltiples activos o timeframes.
 
@@ -140,7 +162,7 @@ def run_all_tests(
         train_df, test_df = split_train_test(dataframe, config.split_ratio)
 
         for sample_name, sample_df in [("in_sample", train_df), ("out_of_sample", test_df)]:
-            for result in run_strategy_suite(sample_df, config):
+            for result in run_strategy_suite(sample_df, config, strategy_names):
                 rows.append(
                     {
                         "dataset": dataset_name,
@@ -150,3 +172,48 @@ def run_all_tests(
                 )
 
     return pd.DataFrame(rows)
+
+
+def summarize_variant_takeaways(summary: pd.DataFrame) -> str:
+    """Genera una lectura breve de la comparativa out-of-sample.
+
+    Regla simple:
+    - priorizamos retorno
+    - penalizamos estrategias que empeoran demasiado el drawdown
+    - usamos el resultado out-of-sample, que es el más útil para decidir
+    """
+    out_of_sample = summary.loc[summary["sample"] == "out_of_sample"].copy()
+    if out_of_sample.empty:
+        return "No hay resultados out-of-sample para interpretar."
+
+    original_row = out_of_sample.loc[out_of_sample["strategy"] == "swing_risk_managed"]
+    if original_row.empty:
+        return "Falta la estrategia original, así que no puedo comparar las variantes."
+
+    original = original_row.iloc[0]
+
+    scored_rows: list[tuple[float, pd.Series]] = []
+    for _, row in out_of_sample.iterrows():
+        drawdown_penalty = max(0.0, abs(row["max_drawdown_pct"]) - abs(original["max_drawdown_pct"]))
+        score = float(row["return_pct"]) - drawdown_penalty
+        scored_rows.append((score, row))
+
+    _, best_row = max(scored_rows, key=lambda item: item[0])
+
+    trade_delta = int(best_row["trades"] - original["trades"])
+    return_delta = round(float(best_row["return_pct"] - original["return_pct"]), 2)
+    drawdown_delta = round(
+        abs(float(best_row["max_drawdown_pct"])) - abs(float(original["max_drawdown_pct"])),
+        2,
+    )
+
+    return (
+        f"La versión más prometedora parece ser '{best_row['strategy']}' en out-of-sample: "
+        f"retorno {best_row['return_pct']:.2f}%, "
+        f"drawdown máximo {best_row['max_drawdown_pct']:.2f}% "
+        f"y {best_row['trades']} trades. "
+        f"Frente a la original, cambia el retorno en {return_delta:+.2f} puntos, "
+        f"el drawdown en {drawdown_delta:+.2f} puntos y el número de trades en {trade_delta:+d}. "
+        "La lectura práctica es simple: si gana más sin empeorar demasiado la caída, "
+        "merece ser la siguiente candidata para validar fuera de muestra."
+    )

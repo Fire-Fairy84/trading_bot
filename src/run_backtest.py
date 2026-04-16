@@ -7,7 +7,14 @@ import warnings
 
 import pandas as pd
 
-from evaluation import BacktestConfig, run_all_tests, run_strategy, split_train_test
+from evaluation import (
+    SWING_VARIANT_NAMES,
+    BacktestConfig,
+    run_all_tests,
+    run_strategy,
+    split_train_test,
+    summarize_variant_takeaways,
+)
 from load_data import download_ohlcv, load_ohlcv
 
 
@@ -52,17 +59,29 @@ def save_html_reports(
     train_df, test_df = split_train_test(dataframe, config.split_ratio)
 
     for sample_name, sample_df in [("in_sample", train_df), ("out_of_sample", test_df)]:
-        for strategy_name in [
-            "swing_risk_managed",
-            "buy_and_hold",
-            "sma_cross_benchmark",
-        ]:
+        for strategy_name in SWING_VARIANT_NAMES:
             backtest, _, _ = run_strategy(sample_df, strategy_name, config)
             html_path = REPORTS_DIR / f"{dataset_name}_{sample_name}_{strategy_name}.html"
             backtest.plot(filename=str(html_path), open_browser=False)
             html_paths.append(html_path)
 
     return html_paths
+
+
+def load_demo_dataset() -> pd.DataFrame:
+    """Usa primero el CSV local para no depender de descarga en cada ejecución."""
+    local_csv_path = Path(__file__).resolve().parent.parent / "data" / f"{DEFAULT_SYMBOL}_1d.csv"
+    csv_path = local_csv_path
+
+    if not local_csv_path.exists():
+        csv_path = download_ohlcv(
+            symbol=DEFAULT_SYMBOL,
+            start=DEFAULT_START,
+            end=DEFAULT_END,
+            interval="1d",
+        )
+
+    return load_ohlcv(csv_path)
 
 
 def print_compact_console_summary(
@@ -92,8 +111,12 @@ def print_compact_console_summary(
         "buy_hold_return_pct",
         "max_drawdown_pct",
         "trades",
+        "win_rate_pct",
+        "profit_factor",
     ]
     print(summary[columns].to_string(index=False))
+    print("\nLectura breve:")
+    print(summarize_variant_takeaways(summary))
 
 
 def main() -> None:
@@ -104,13 +127,7 @@ def main() -> None:
         module=r"backtesting\..*",
     )
 
-    csv_path = download_ohlcv(
-        symbol=DEFAULT_SYMBOL,
-        start=DEFAULT_START,
-        end=DEFAULT_END,
-        interval="1d",
-    )
-    dataframe = load_ohlcv(csv_path)
+    dataframe = load_demo_dataset()
 
     config = BacktestConfig(
         initial_cash=10_000,
@@ -120,7 +137,7 @@ def main() -> None:
     )
 
     data_dict = build_demo_data_dict(dataframe)
-    summary = run_all_tests(data_dict, config)
+    summary = run_all_tests(data_dict, config, strategy_names=SWING_VARIANT_NAMES)
     csv_report_path, markdown_report_path = save_reports(summary, "SPY_1d")
     html_report_paths = save_html_reports("SPY_1d", dataframe, config)
     print_compact_console_summary(
