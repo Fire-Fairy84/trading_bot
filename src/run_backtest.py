@@ -1,90 +1,73 @@
-"""Script principal para descargar datos y ejecutar el backtest."""
+"""Runner principal para descargar datos y evaluar estrategias."""
+
+from __future__ import annotations
 
 from pathlib import Path
 
-from backtesting import Backtest
+import pandas as pd
 
+from evaluation import BacktestConfig, print_metrics, run_all_tests, run_strategy_suite
 from load_data import download_ohlcv, load_ohlcv, split_in_sample_out_of_sample
-from strategy import SwingSmaRsiStrategy
 
 
 DEFAULT_SYMBOL = "SPY"
 DEFAULT_START = "2015-01-01"
 DEFAULT_END = "2025-01-01"
-COMMISSION = 0.001
-SPREAD = 0.0005
-INITIAL_CASH = 10_000
 
 
-def build_backtest(dataframe):
-    """Crea un objeto Backtest con supuestos explícitos de costes."""
-    return Backtest(
-        dataframe,
-        SwingSmaRsiStrategy,
-        cash=INITIAL_CASH,
-        commission=COMMISSION,
-        spread=SPREAD,
-        exclusive_orders=True,
-        trade_on_close=False,
-    )
+def print_dataset_overview(name: str, dataframe: pd.DataFrame) -> None:
+    """Imprime el rango temporal y el tamaño del dataset."""
+    print(f"\nDataset: {name}")
+    print(f"Filas: {len(dataframe)}")
+    print(f"Inicio: {dataframe.index.min()}")
+    print(f"Fin: {dataframe.index.max()}")
 
 
-def print_summary(title: str, stats) -> None:
-    """Imprime un resumen corto con métricas básicas."""
-    print(f"\n=== {title} ===")
-    print(f"Start: {stats['Start']}")
-    print(f"End: {stats['End']}")
-    print(f"Return [%]: {stats['Return [%]']:.2f}")
-    print(f"Return (Ann.) [%]: {stats['Return (Ann.) [%]']:.2f}")
-    print(f"Sharpe Ratio: {stats['Sharpe Ratio']:.2f}")
-    print(f"Max. Drawdown [%]: {stats['Max. Drawdown [%]']:.2f}")
-    print(f"Win Rate [%]: {stats['Win Rate [%]']:.2f}")
-    print(f"Profit Factor: {stats['Profit Factor']:.2f}")
-    print(f"# Trades: {int(stats['# Trades'])}")
+def print_suite_results(title: str, results: list[dict]) -> None:
+    """Muestra resultados de varias estrategias sobre una misma muestra."""
+    print(f"\n########## {title} ##########")
+    for result in results:
+        strategy_name = result["strategy"]
+        metrics = {key: value for key, value in result.items() if key != "strategy"}
+        print_metrics(strategy_name, metrics)
+
+
+def build_demo_data_dict(dataframe: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Devuelve una estructura lista para usar con run_all_tests()."""
+    return {"SPY_1d": dataframe}
 
 
 def main() -> None:
-    """Descarga datos, separa muestras y ejecuta dos backtests."""
+    """Ejemplo completo de uso sobre un dataset diario de SPY."""
     csv_path = download_ohlcv(
         symbol=DEFAULT_SYMBOL,
         start=DEFAULT_START,
         end=DEFAULT_END,
         interval="1d",
     )
-
     dataframe = load_ohlcv(csv_path)
-    in_sample, out_of_sample = split_in_sample_out_of_sample(dataframe, split_ratio=0.7)
 
     print(f"CSV usado: {Path(csv_path).resolve()}")
-    print(f"Filas totales: {len(dataframe)}")
-    print(
-        f"in-sample: {in_sample.index.min().date()} -> {in_sample.index.max().date()} "
-        f"({len(in_sample)} filas)"
+    print_dataset_overview("SPY_1d", dataframe)
+
+    config = BacktestConfig(
+        initial_cash=10_000,
+        commission=0.001,
+        spread=0.0005,
+        split_ratio=0.7,
     )
-    print(
-        f"out-of-sample: {out_of_sample.index.min().date()} -> "
-        f"{out_of_sample.index.max().date()} ({len(out_of_sample)} filas)"
+
+    in_sample, out_of_sample = split_in_sample_out_of_sample(
+        dataframe, split_ratio=config.split_ratio
     )
 
-    in_sample_bt = build_backtest(in_sample)
-    in_sample_stats = in_sample_bt.run()
-    print_summary("IN-SAMPLE", in_sample_stats)
+    print_suite_results("IN-SAMPLE", run_strategy_suite(in_sample, config))
+    print_suite_results("OUT-OF-SAMPLE", run_strategy_suite(out_of_sample, config))
 
-    out_of_sample_bt = build_backtest(out_of_sample)
-    out_of_sample_stats = out_of_sample_bt.run()
-    print_summary("OUT-OF-SAMPLE", out_of_sample_stats)
-
-    try:
-        reports_dir = Path(__file__).resolve().parent.parent / "reports"
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        in_sample_bt.plot(filename=str(reports_dir / "in_sample_backtest.html"), open_browser=False)
-        out_of_sample_bt.plot(
-            filename=str(reports_dir / "out_of_sample_backtest.html"),
-            open_browser=False,
-        )
-        print("\nSe generaron gráficos HTML en la carpeta reports/.")
-    except Exception as error:
-        print(f"\nNo se pudieron generar los gráficos HTML: {error}")
+    print("\n########## RESUMEN MULTI-TEST ##########")
+    data_dict = build_demo_data_dict(dataframe)
+    summary = run_all_tests(data_dict, config)
+    print(summary.to_string(index=False))
 
 
 if __name__ == "__main__":
