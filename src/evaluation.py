@@ -186,19 +186,39 @@ def summarize_variant_takeaways(summary: pd.DataFrame) -> str:
     if out_of_sample.empty:
         return "No hay resultados out-of-sample para interpretar."
 
-    original_row = out_of_sample.loc[out_of_sample["strategy"] == "swing_risk_managed"]
-    if original_row.empty:
-        return "Falta la estrategia original, así que no puedo comparar las variantes."
+    if "dataset" in out_of_sample.columns:
+        dataset_groups = out_of_sample.groupby("dataset", sort=False)
+    else:
+        dataset_groups = [(None, out_of_sample)]
 
-    original = original_row.iloc[0]
+    best_candidate: tuple[float, pd.Series, pd.Series] | None = None
 
-    scored_rows: list[tuple[float, pd.Series]] = []
-    for _, row in out_of_sample.iterrows():
-        drawdown_penalty = max(0.0, abs(row["max_drawdown_pct"]) - abs(original["max_drawdown_pct"]))
-        score = float(row["return_pct"]) - drawdown_penalty
-        scored_rows.append((score, row))
+    for dataset_name, dataset_rows in dataset_groups:
+        original_row = dataset_rows.loc[
+            dataset_rows["strategy"] == "swing_risk_managed"
+        ]
+        if original_row.empty:
+            continue
 
-    _, best_row = max(scored_rows, key=lambda item: item[0])
+        original = original_row.iloc[0]
+
+        for _, row in dataset_rows.iterrows():
+            if row["strategy"] == "swing_risk_managed":
+                continue
+
+            drawdown_penalty = max(
+                0.0,
+                abs(row["max_drawdown_pct"]) - abs(original["max_drawdown_pct"]),
+            )
+            score = float(row["return_pct"]) - drawdown_penalty
+
+            if best_candidate is None or score > best_candidate[0]:
+                best_candidate = (score, row, original)
+
+    if best_candidate is None:
+        return "Faltan variantes comparables junto a la estrategia original."
+
+    _, best_row, original = best_candidate
 
     trade_delta = int(best_row["trades"] - original["trades"])
     return_delta = round(float(best_row["return_pct"] - original["return_pct"]), 2)
@@ -206,9 +226,12 @@ def summarize_variant_takeaways(summary: pd.DataFrame) -> str:
         abs(float(best_row["max_drawdown_pct"])) - abs(float(original["max_drawdown_pct"])),
         2,
     )
+    dataset_prefix = ""
+    if "dataset" in best_row.index:
+        dataset_prefix = f"en {best_row['dataset']} "
 
     return (
-        f"La versión más prometedora parece ser '{best_row['strategy']}' en out-of-sample: "
+        f"La versión más prometedora parece ser '{best_row['strategy']}' {dataset_prefix}en out-of-sample: "
         f"retorno {best_row['return_pct']:.2f}%, "
         f"drawdown máximo {best_row['max_drawdown_pct']:.2f}% "
         f"y {best_row['trades']} trades. "

@@ -49,8 +49,12 @@ def rsi_wilder(values, period: int = 14) -> pd.Series:
 
     relative_strength = avg_gain / avg_loss.replace(0, np.nan)
     rsi_values = 100 - (100 / (1 + relative_strength))
-    rsi_values = rsi_values.where(avg_loss != 0, 100)
-    rsi_values = rsi_values.where(avg_gain != 0, 0)
+    no_losses = avg_loss == 0
+    no_gains = avg_gain == 0
+    flat_series = no_losses & no_gains
+    rsi_values = rsi_values.where(~no_losses, 100)
+    rsi_values = rsi_values.where(~no_gains, 0)
+    rsi_values = rsi_values.where(~flat_series, 50)
     return rsi_values.fillna(50)
 
 

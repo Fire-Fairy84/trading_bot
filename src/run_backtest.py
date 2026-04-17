@@ -55,6 +55,7 @@ def save_html_reports(
     config: BacktestConfig,
 ) -> list[Path]:
     """Genera un HTML por estrategia y por muestra temporal."""
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     html_paths: list[Path] = []
     train_df, test_df = split_train_test(dataframe, config.split_ratio)
 

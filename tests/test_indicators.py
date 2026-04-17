@@ -27,6 +27,12 @@ def test_rsi_wilder_stays_within_expected_bounds() -> None:
     assert result.between(0, 100).all()
 
 
+def test_rsi_wilder_returns_neutral_value_for_flat_series() -> None:
+    values = pd.Series([100.0] * 20)
+    result = rsi_wilder(values, 14)
+    assert result.iloc[-1] == 50
+
+
 def test_atr_returns_positive_values_after_warmup() -> None:
     close = pd.Series([10, 11, 12, 11, 13, 14, 13, 15], dtype=float)
     high = close + 1

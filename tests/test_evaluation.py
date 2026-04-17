@@ -94,3 +94,48 @@ def test_summarize_variant_takeaways_mentions_best_strategy() -> None:
     )
     text = summarize_variant_takeaways(summary)
     assert "swing_flexible_entry" in text
+
+
+def test_summarize_variant_takeaways_keeps_dataset_baselines_separate() -> None:
+    summary = pd.DataFrame(
+        [
+            {
+                "dataset": "AAA",
+                "sample": "out_of_sample",
+                "strategy": "swing_risk_managed",
+                "return_pct": 1.0,
+                "max_drawdown_pct": -5.0,
+                "trades": 1,
+            },
+            {
+                "dataset": "AAA",
+                "sample": "out_of_sample",
+                "strategy": "swing_flexible_entry",
+                "return_pct": 2.0,
+                "max_drawdown_pct": -5.0,
+                "trades": 2,
+            },
+            {
+                "dataset": "BBB",
+                "sample": "out_of_sample",
+                "strategy": "swing_risk_managed",
+                "return_pct": 50.0,
+                "max_drawdown_pct": -20.0,
+                "trades": 5,
+            },
+            {
+                "dataset": "BBB",
+                "sample": "out_of_sample",
+                "strategy": "swing_flexible_entry",
+                "return_pct": 40.0,
+                "max_drawdown_pct": -10.0,
+                "trades": 6,
+            },
+        ]
+    )
+
+    text = summarize_variant_takeaways(summary)
+
+    assert "swing_flexible_entry" in text
+    assert "BBB" in text
+    assert "cambia el retorno en -10.00 puntos" in text
