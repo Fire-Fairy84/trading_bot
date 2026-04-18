@@ -151,11 +151,37 @@ La filosofía del proyecto hasta fase B es:
 
 ## Siguiente paso recomendado
 
-Antes de pasar a una implementación más compleja, conviene:
+La fase B queda cerrada con esta decisión de trabajo:
 
-- repetir la validación en más activos o timeframes
-- revisar robustez de costes y supuestos
-- documentar conclusiones por variante
-- decidir qué versión merece promoción a fase C
+- variante candidata para promoción a fase C: `swing_calmer_exit`
+- alternativa secundaria: `swing_wider_atr_stop`
+- variante descartada por ahora como candidata principal: `swing_flexible_entry`
 
-Resumen práctico: la fase B ya no es una simple maqueta. Tenemos una base razonable para aprender validación de estrategia con algo de disciplina experimental.
+Motivo resumido:
+
+- `swing_calmer_exit` ofrece el mejor equilibrio actual entre retorno, calidad de salida y comportamiento `out-of-sample`
+- `swing_wider_atr_stop` también se comporta bien, pero prioriza más la contención de drawdown que la captura de movimiento
+- `swing_flexible_entry` empeora de forma clara fuera de muestra y no merece promoción en esta etapa
+
+La lectura metodológica es simple: para este proyecto, la hipótesis "salir menos agresivamente" queda mejor respaldada que la hipótesis "entrar antes".
+
+## Cierre de Fase B
+
+La decisión de promoción se basa en los resultados actuales sobre `SPY 1d` con separación temporal `70/30`:
+
+- `swing_risk_managed`: `8.00%` out-of-sample, `-2.11%` max drawdown
+- `swing_calmer_exit`: `7.43%` out-of-sample, `-2.27%` max drawdown
+- `swing_wider_atr_stop`: `5.97%` out-of-sample, `-1.72%` max drawdown
+- `swing_flexible_entry`: `-2.06%` out-of-sample, `-4.66%` max drawdown
+
+Aunque la versión base obtiene un retorno ligeramente superior, `swing_calmer_exit` se selecciona como candidata principal porque la mejora conceptual es más clara y portable: reduce salidas demasiado nerviosas, deja respirar la posición y mantiene un perfil de riesgo cercano al de la estrategia original.
+
+Este cierre no pretende demostrar robustez definitiva. La evidencia sigue limitada a:
+
+- un activo principal (`SPY`)
+- un timeframe (`1d`)
+- una única partición temporal (`70/30`)
+
+Por eso la promoción a fase C debe interpretarse como una decisión práctica de continuidad, no como una validación final de ventaja estructural.
+
+Resumen práctico: la fase B ya no es una simple maqueta. Queda una candidata clara para portar a Freqtrade y una base suficientemente sólida para continuar aprendiendo en una fase más operativa.

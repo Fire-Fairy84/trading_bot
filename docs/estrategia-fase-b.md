@@ -1,4 +1,4 @@
-# Informe breve: estrategia a seguir tras la fase B
+# Informe breve: cierre y estrategia a seguir tras la fase B
 
 ## Situación actual
 
@@ -13,22 +13,48 @@ La fase B ya deja una base útil:
 
 Esto significa que el proyecto ya está en un punto correcto para dejar de "añadir ideas" y empezar a exigir más evidencia.
 
-## Estrategia recomendada
+## Decisión de cierre
 
-La siguiente estrategia de trabajo debería ser conservadora y ordenada:
+La fase B queda cerrada con esta decisión:
 
-1. consolidar una variante candidata en vez de seguir creando muchas más
-2. validar esa candidata en más datasets, activos o marcos temporales
-3. revisar si el comportamiento aguanta costes, drawdown y número de operaciones razonables
-4. documentar qué mejora aporta cada cambio y cuáles no merecen seguir
-5. solo después mover la estrategia a una fase más operativa como Freqtrade
+- variante candidata para promoción a fase C: `swing_calmer_exit`
+- alternativa secundaria: `swing_wider_atr_stop`
+- variante descartada como candidata principal: `swing_flexible_entry`
+
+La decisión no implica que `swing_calmer_exit` sea una estrategia robusta en sentido fuerte. Implica que, con la evidencia disponible en esta fase, es la versión más razonable para portar primero a un entorno más operativo.
+
+## Evidencia actual
+
+La promoción se apoya en los resultados `out-of-sample` actuales sobre `SPY 1d`:
+
+- `swing_risk_managed`: `8.00%` de retorno, `-2.11%` de max drawdown, `8` trades
+- `swing_calmer_exit`: `7.43%` de retorno, `-2.27%` de max drawdown, `9` trades
+- `swing_wider_atr_stop`: `5.97%` de retorno, `-1.72%` de max drawdown, `8` trades
+- `swing_flexible_entry`: `-2.06%` de retorno, `-4.66%` de max drawdown, `11` trades
+
+La variante base obtiene el mayor retorno absoluto, pero `swing_calmer_exit` queda muy cerca y además valida mejor la hipótesis de trabajo más interesante de esta fase: reducir la agresividad de salida parece aportar más que flexibilizar la entrada.
+
+La lectura cualitativa es:
+
+- `Calmer Exit` mejora la portabilidad conceptual porque simplifica la idea táctica de salida
+- `Wider ATR Stop` queda como alternativa defensiva si más adelante se quiere priorizar contención de drawdown
+- `Flexible Entry` pierde fuerza como candidata al mostrar peor comportamiento fuera de muestra
 
 ## Prioridades inmediatas
 
-- comparar la variante base contra las variantes swing en más muestras
-- evitar optimización excesiva de parámetros sobre un único activo
-- registrar conclusiones simples por experimento: qué cambió, qué mejoró, qué empeoró
-- elegir una sola versión para promoción a fase C
+- documentar explícitamente la decisión de promoción
+- tratar `swing_calmer_exit` como versión base de la siguiente etapa
+- conservar `swing_wider_atr_stop` como referencia secundaria
+- evitar nuevas iteraciones menores en `backtesting.py` antes de completar la portabilidad
+
+## Estrategia recomendada
+
+La siguiente estrategia de trabajo debería ser ordenada y pragmática:
+
+1. usar `swing_calmer_exit` como candidata principal en fase C
+2. replicar la lógica en Freqtrade sin reoptimizar reglas durante la portabilidad
+3. comparar el comportamiento del port con la implementación actual para detectar diferencias de framework
+4. dejar la validación adicional de robustez para una iteración posterior, ya sobre una versión funcional en el nuevo entorno
 
 ## Riesgos a evitar
 
@@ -39,4 +65,4 @@ La siguiente estrategia de trabajo debería ser conservadora y ordenada:
 
 ## Recomendación final
 
-La mejor dirección ahora no es "hacer la estrategia más compleja", sino "hacer la validación más seria". Si una variante mantiene resultados aceptables fuera de muestra y no degrada demasiado el drawdown, esa debería ser la candidata para la siguiente fase.
+La mejor decisión práctica en este punto es dejar cerrada la fase B y avanzar a fase C con una candidata explícita. La promoción de `swing_calmer_exit` debe entenderse como una decisión de continuidad con evidencia suficiente para seguir aprendiendo, no como una validación final de robustez.
