@@ -185,3 +185,14 @@ Conclusión final del proyecto:
 - `Interesante pero no robusta`
 
 La mejor candidata actual es `MiEstrategiaFaseB` en `4h`, pero necesita más validación antes de merecer cualquier confianza práctica.
+
+## Siguiente paso prudente
+
+Si se quisiera estirar un poco más la validación sin caer en optimización oportunista, el siguiente paso razonable sería:
+
+- `forward test` corto en `dry-run`
+- mismo conjunto de pares
+- mismo `timeframe` (`4h`)
+- sin tocar parámetros
+
+Eso serviría para comprobar estabilidad operativa, no para declarar la estrategia apta para `live`.
