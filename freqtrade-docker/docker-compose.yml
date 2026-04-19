@@ -1,0 +1,17 @@
+services:
+  freqtrade:
+    image: ${FREQTRADE_IMAGE:-freqtradeorg/freqtrade:stable}
+    container_name: ${COMPOSE_PROJECT_NAME:-proyecto-freqtrade}-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./user_data:/freqtrade/user_data
+    ports:
+      - "${FREQTRADE_API_PORT:-8080}:8080"
+    command:
+      - trade
+      - --config
+      - /freqtrade/user_data/config.json
+      - --strategy
+      - ${FREQTRADE_STRATEGY:-MiEstrategia}
