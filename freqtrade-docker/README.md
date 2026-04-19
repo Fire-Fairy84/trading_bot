@@ -50,14 +50,26 @@ Copy-Item .env.example .env
 
 ## Descargar datos
 
+### Config base
+
 ```bash
-docker compose run --rm freqtrade download-data --config /freqtrade/user_data/config.json --strategy MiEstrategia --timeframe 1h --timerange 20240101-
+docker compose run --rm freqtrade download-data --config /freqtrade/user_data/config.json --timeframe 1h --timerange 20240101-
+```
+
+### Config de validación multi-par
+
+```bash
+docker compose run --rm freqtrade download-data --prepend --config /freqtrade/user_data/config.validation.json --timeframe 4h --timerange 20240101-20260331
 ```
 
 ## Ejecutar backtesting
 
 ```bash
 docker compose run --rm freqtrade backtesting --config /freqtrade/user_data/config.json --strategy MiEstrategia --timeframe 1h
+```
+
+```bash
+docker compose run --rm freqtrade backtesting --config /freqtrade/user_data/config.validation.json --strategy MiEstrategiaFaseB --timeframe 4h --timerange 20240401-20260331
 ```
 
 ## Ejecutar dry-run

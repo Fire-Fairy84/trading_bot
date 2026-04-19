@@ -1,187 +1,187 @@
-# Proyecto Trading
+# Trading Bot Validation Project
 
-Proyecto educativo para aprender trading algorítmico con Python paso a paso, usando `backtesting.py` como base de validación.
+Proyecto educativo de trading algorítmico orientado a portfolio. El foco no es vender una estrategia "ganadora", sino mostrar un proceso creíble de validación con `Freqtrade`, `Docker` y criterios cuantitativos básicos.
 
 ## Objetivo
 
-Construir una base técnica simple, entendible y reproducible para:
+Validar de forma honesta dos estrategias long-only sobre `crypto spot`:
 
-- descargar y preparar datos OHLCV
-- implementar una estrategia swing long-only
-- aplicar gestión de riesgo básica
-- comparar variantes de la estrategia
-- validar resultados con separación temporal `in-sample` / `out-of-sample`
-- generar reportes para revisar los resultados con calma
+- `MiEstrategia`: versión base educativa, sencilla y fácil de depurar.
+- `MiEstrategiaFaseB`: traducción simple de la lógica swing desarrollada en fases previas del proyecto.
 
-## Estado actual
+La prioridad de esta fase ha sido:
 
-El proyecto ya cubre:
+- no optimizar parámetros
+- mantener condiciones consistentes entre runs
+- comparar varios `timeframes`
+- comparar varios pares líquidos
+- documentar resultados sin hype
 
-- Fase A: entorno inicial, estructura del proyecto, carga de datos y primer backtest base
-- Fase B: estrategia swing simple con indicadores, sizing por riesgo, stops, variantes y validación comparativa
+## Stack
 
-Pendiente para la siguiente etapa:
+- `Python`
+- `Docker`
+- `Docker Compose`
+- `Freqtrade`
+- `Binance spot`
 
-- Fase C: portar la lógica a un entorno más cercano a producción, previsiblemente con Freqtrade + Docker
-
-## Qué incluye ahora mismo
-
-### Datos y carga
-
-- descarga de datos OHLCV con `yfinance`
-- carga desde CSV local para no depender siempre de red
-- validación mínima de columnas y formato
-
-### Estrategias e indicadores
-
-- `BuyAndHoldStrategy` como benchmark básico
-- `SmaCrossBenchmarkStrategy` como benchmark técnico simple
-- `RiskManagedSwingStrategy` como estrategia principal de fase B
-
-La estrategia principal usa:
-
-- filtro de tendencia con `SMA 50 > SMA 200`
-- señal de recuperación de momentum con `RSI`
-- salida por pérdida de tendencia y/o momentum
-- `stop loss` configurable
-- tamaño de posición basado en riesgo por operación
-
-### Variantes comparables
-
-Se han añadido variantes para aprendizaje y comparación:
-
-- `swing_risk_managed`: versión base
-- `swing_flexible_entry`: entrada menos estricta
-- `swing_calmer_exit`: salida menos agresiva y trailing stop
-- `swing_wider_atr_stop`: stop ATR más amplio
-- `swing_percent_stop`: variante opcional con stop porcentual fijo
-
-### Evaluación
-
-- extracción de métricas homogéneas para todas las estrategias
-- partición temporal `in-sample` / `out-of-sample`
-- comparación de varias estrategias sobre el mismo dataset
-- resumen interpretativo para detectar la variante más prometedora
-
-### Reportes
-
-Al ejecutar el runner principal se generan:
-
-- resumen CSV
-- resumen Markdown
-- reportes HTML por estrategia y por tramo temporal
-
-## Estructura actual
+## Estructura
 
 ```text
 trading-bot/
 ├── README.md
-├── requirements.txt
-├── data/
-│   └── SPY_1d.csv
-├── reports/
-├── specs/
+├── docs/
+│   └── freqtrade-validation.md
+├── freqtrade-docker/
+│   ├── docker-compose.yml
+│   ├── README.md
+│   └── user_data/
+│       ├── config.json
+│       ├── config.validation.json
+│       └── strategies/
+│           └── my_strategy.py
 ├── src/
-│   ├── evaluation.py
-│   ├── load_data.py
-│   ├── run_backtest.py
-│   └── strategy.py
+├── specs/
 └── tests/
-    ├── conftest.py
-    ├── test_evaluation.py
-    ├── test_indicators.py
-    └── test_risk_management.py
 ```
 
-## Instalación
+## Qué hace cada estrategia
+
+### `MiEstrategia`
+
+Estrategia base de aprendizaje:
+
+- usa `EMA 12/26`
+- usa `RSI` como filtro de momentum
+- toma beneficios con `minimal_roi`
+- sale cuando la media rápida pierde fuerza o el `RSI` cae
+
+Ventaja: muy fácil de entender.
+
+Riesgo: depende bastante del `ROI` fijo y muestra sensibilidad al `timeframe`.
+
+### `MiEstrategiaFaseB`
+
+Versión más cercana a una lógica swing:
+
+- filtro de tendencia con `SMA 50 > SMA 200`
+- precio por encima de `SMA 50`
+- entrada por recuperación de `RSI`
+- salida por pérdida de tendencia o momentum
+
+Ventaja: conceptualmente más coherente como estrategia swing.
+
+Riesgo: no es estable en todos los `timeframes`; mejora mucho en `4h`, pero no mantiene la misma calidad en `1h`.
+
+## Protocolo de validación
+
+Se usó el mismo protocolo para todos los runs:
+
+- exchange: `Binance spot`
+- pares: `BTC/USDT`, `ETH/USDT`, `BNB/USDT`, `SOL/USDT`, `XRP/USDT`
+- `timerange`: `2024-04-01` a `2026-03-31`
+- sin cambios de parámetros entre runs
+- `max_open_trades = 1`
+- `stake_amount = 100 USDT`
+
+Nota metodológica:
+
+- `MiEstrategiaFaseB` necesita más velas de arranque (`startup_candle_count = 220`).
+- Para que la ventana efectiva fuese comparable, se descargó histórico previo con `--prepend`.
+
+## Resultados resumidos
+
+| Estrategia | Timeframe | Profit total | Trades | Win rate | Max drawdown | Profit factor |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `MiEstrategia` | `1h` | `8.34%` | `1330` | `62.3%` | `5.05%` | `1.08` |
+| `MiEstrategia` | `4h` | `3.50%` | `594` | `78.3%` | `5.39%` | `1.07` |
+| `MiEstrategia` | `6h` | `-3.77%` | `415` | `79.0%` | `5.71%` | `0.92` |
+| `MiEstrategiaFaseB` | `1h` | `3.20%` | `390` | `21.8%` | `6.93%` | `1.08` |
+| `MiEstrategiaFaseB` | `4h` | `9.26%` | `84` | `28.6%` | `2.49%` | `1.70` |
+| `MiEstrategiaFaseB` | `6h` | `4.23%` | `59` | `27.1%` | `4.64%` | `1.34` |
+
+## Lectura honesta
+
+### `MiEstrategia`
+
+- Aguanta razonablemente en `1h` y `4h`, pero empeora en `6h`.
+- Tiene `win rate` alto, pero la ventaja estadística es débil.
+- `profit factor` cerca de `1.0` en todos los casos.
+- No parece robusta: el rendimiento depende bastante del `timeframe`.
+
+Decisión:
+
+- `No consistente`
+
+### `MiEstrategiaFaseB`
+
+- Se comporta mal o de forma mediocre en `1h`.
+- Mejora claramente en `4h`.
+- Sigue siendo positiva en `6h`, pero con menor consistencia entre pares.
+- El mejor resultado aparece en un `timeframe` concreto, lo que obliga a desconfiar un poco.
+
+Decisión:
+
+- `Prometedora pero necesita más validación`
+
+## Riesgo de overfitting
+
+Sí, existe riesgo de `overfitting`, aunque no se hayan optimizado parámetros de forma agresiva.
+
+Motivos:
+
+- la mejora de `MiEstrategiaFaseB` se concentra sobre todo en `4h`
+- en `1h` la misma idea pierde mucha calidad
+- en `6h` mantiene resultado positivo, pero depende más de pocos trades y de algunos pares concretos
+- la validación sigue limitada a un único exchange y un único universo pequeño de pares
+
+La conclusión razonable no es "funciona", sino:
+
+- hay una hipótesis de trabajo interesante en `4h`
+- todavía no hay evidencia suficiente para llamarla robusta
+
+## Cómo ejecutar Freqtrade
+
+Desde [freqtrade-docker](/Users/esther/Proyectos/trading-bot/freqtrade-docker):
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+cp .env.example .env
+docker compose up -d freqtrade
+docker compose logs -f freqtrade
 ```
 
-Importante: ejecuta siempre `source .venv/bin/activate` desde la raíz del repositorio antes de lanzar `python`, `pytest` o scripts del proyecto. En este repo asumimos ese entorno virtual local como contexto de trabajo.
-
-## Uso
-
-### Ejecutar el backtest principal
+Descarga de datos de validación:
 
 ```bash
-python src/run_backtest.py
+docker compose run --rm freqtrade download-data --prepend --config /freqtrade/user_data/config.validation.json --timeframe 4h --timerange 20240101-20260331
 ```
 
-Esto:
-
-- carga `data/SPY_1d.csv` si ya existe
-- descarga datos solo si el CSV no está disponible
-- ejecuta la comparativa principal de variantes swing
-- guarda resultados en `reports/`
-
-### Ejecutar tests
+Backtesting de la estrategia base:
 
 ```bash
-pytest
+docker compose run --rm freqtrade backtesting --config /freqtrade/user_data/config.validation.json --strategy MiEstrategia --timeframe 4h --timerange 20240401-20260331
 ```
 
-## Métricas que estamos observando
+Backtesting de la variante swing:
 
-Las comparativas actuales ponen el foco en:
+```bash
+docker compose run --rm freqtrade backtesting --config /freqtrade/user_data/config.validation.json --strategy MiEstrategiaFaseB --timeframe 4h --timerange 20240401-20260331
+```
 
-- `return_pct`
-- `buy_hold_return_pct`
-- `vs_buy_hold_pct`
-- `max_drawdown_pct`
-- `sharpe_ratio`
-- `trades`
-- `win_rate_pct`
-- `profit_factor`
+## Conclusión final
 
-La prioridad no es encontrar una estrategia "ganadora" todavía, sino aprender a validar mejor una idea y evitar conclusiones engañosas.
+Este proyecto no demuestra una estrategia lista para producción.
 
-## Criterio de trabajo en esta fase
+Sí demuestra algo más útil para portfolio junior:
 
-La filosofía del proyecto hasta fase B es:
+- que sabes montar un entorno reproducible con `Freqtrade + Docker`
+- que sabes separar configuración, estrategia y core
+- que sabes validar en varios `timeframes`
+- que sabes contrastar varios pares
+- que sabes cerrar una conclusión honesta aunque el resultado no sea espectacular
 
-- mantener la estrategia simple y explicable
-- no optimizar demasiados parámetros a la vez
-- comparar cambios pequeños y aislados
-- dar más peso al resultado `out-of-sample` que al `in-sample`
-- tratar el benchmark como referencia, no como enemigo
+Conclusión final del proyecto:
 
-## Siguiente paso recomendado
+- `Interesante pero no robusta`
 
-La fase B queda cerrada con esta decisión de trabajo:
-
-- variante candidata para promoción a fase C: `swing_calmer_exit`
-- alternativa secundaria: `swing_wider_atr_stop`
-- variante descartada por ahora como candidata principal: `swing_flexible_entry`
-
-Motivo resumido:
-
-- `swing_calmer_exit` ofrece el mejor equilibrio actual entre retorno, calidad de salida y comportamiento `out-of-sample`
-- `swing_wider_atr_stop` también se comporta bien, pero prioriza más la contención de drawdown que la captura de movimiento
-- `swing_flexible_entry` empeora de forma clara fuera de muestra y no merece promoción en esta etapa
-
-La lectura metodológica es simple: para este proyecto, la hipótesis "salir menos agresivamente" queda mejor respaldada que la hipótesis "entrar antes".
-
-## Cierre de Fase B
-
-La decisión de promoción se basa en los resultados actuales sobre `SPY 1d` con separación temporal `70/30`:
-
-- `swing_risk_managed`: `8.00%` out-of-sample, `-2.11%` max drawdown
-- `swing_calmer_exit`: `7.43%` out-of-sample, `-2.27%` max drawdown
-- `swing_wider_atr_stop`: `5.97%` out-of-sample, `-1.72%` max drawdown
-- `swing_flexible_entry`: `-2.06%` out-of-sample, `-4.66%` max drawdown
-
-Aunque la versión base obtiene un retorno ligeramente superior, `swing_calmer_exit` se selecciona como candidata principal porque la mejora conceptual es más clara y portable: reduce salidas demasiado nerviosas, deja respirar la posición y mantiene un perfil de riesgo cercano al de la estrategia original.
-
-Este cierre no pretende demostrar robustez definitiva. La evidencia sigue limitada a:
-
-- un activo principal (`SPY`)
-- un timeframe (`1d`)
-- una única partición temporal (`70/30`)
-
-Por eso la promoción a fase C debe interpretarse como una decisión práctica de continuidad, no como una validación final de ventaja estructural.
-
-Resumen práctico: la fase B ya no es una simple maqueta. Queda una candidata clara para portar a Freqtrade y una base suficientemente sólida para continuar aprendiendo en una fase más operativa.
+La mejor candidata actual es `MiEstrategiaFaseB` en `4h`, pero necesita más validación antes de merecer cualquier confianza práctica.
