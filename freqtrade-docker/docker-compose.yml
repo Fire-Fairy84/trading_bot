@@ -12,6 +12,6 @@ services:
     command:
       - trade
       - --config
-      - /freqtrade/user_data/config.json
+      - ${FREQTRADE_CONFIG:-/freqtrade/user_data/config.json}
       - --strategy
       - ${FREQTRADE_STRATEGY:-MiEstrategia}
