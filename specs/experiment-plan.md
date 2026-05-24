@@ -1,5 +1,7 @@
 # Experiment Plan
 
+Este plan pertenece a la capa `src/` del repositorio. Documenta experimentos sobre el laboratorio con `backtesting.py`, separados de la validación operativa en `freqtrade-docker/`.
+
 ## Goal
 
 El objetivo de esta fase es determinar si pequeñas modificaciones sobre una estrategia swing base alteran de forma útil su equilibrio entre retorno, drawdown, frecuencia operativa y consistencia fuera de muestra.

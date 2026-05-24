@@ -12,8 +12,9 @@ Registro simple para observar `MiEstrategiaFaseB` en `4h` sin tocar parámetros.
 
 ## Cómo revisar
 
+Ejecutar desde `freqtrade-docker/`:
+
 ```bash
-cd /Users/esther/Proyectos/trading-bot/freqtrade-docker
 docker compose logs --tail 100 freqtrade
 ```
 

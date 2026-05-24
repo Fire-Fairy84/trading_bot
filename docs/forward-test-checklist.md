@@ -12,8 +12,9 @@ Checklist corto para una validación final en `dry-run`, sin tocar parámetros.
 
 ## Arranque
 
+Ejecutar desde `freqtrade-docker/`:
+
 ```bash
-cd /Users/esther/Proyectos/trading-bot/freqtrade-docker
 docker compose up -d freqtrade
 docker compose logs -f freqtrade
 ```
