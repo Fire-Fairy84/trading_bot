@@ -90,6 +90,6 @@ docker compose logs -f freqtrade
 docker compose down
 ```
 
-## Note
+## Nota
 
-The validation config keeps the Freqtrade API disabled by default. If it is enabled locally, it should stay bound to localhost and use custom credentials.
+La configuración de validación mantiene la API de Freqtrade desactivada por defecto. Si se activa en local, conviene limitarla a `localhost` y usar credenciales propias.
