@@ -1,15 +1,42 @@
-# Trading Bot Validation Project
+# Trading Strategy Validation Lab
 
-Proyecto educativo de trading algorítmico orientado a portfolio. El foco no es vender una estrategia "ganadora", sino mostrar un proceso creíble de validación con `Freqtrade`, `Docker` y criterios cuantitativos básicos.
+Repositorio para analizar y validar estrategias de trading con dos entornos de trabajo:
 
-## Objetivo
+- `src/` para investigación y comparación rápida con `backtesting.py`
+- `freqtrade-docker/` para validación operativa sobre `crypto spot` con `Freqtrade + Docker`
 
-Validar de forma honesta dos estrategias long-only sobre `crypto spot`:
+## Resumen
+
+Este repositorio no presenta una estrategia lista para producción. Documenta un proceso de validación: definición de reglas, comparación de variantes, contraste entre `timeframes`, revisión de resultados y cierre con una conclusión explícita sobre límites y robustez.
+
+La candidata más interesante en la validación con `Freqtrade` es `MiEstrategiaFaseB` en `4h`, pero la evidencia actual sigue siendo insuficiente para considerarla robusta.
+
+## Enfoque
+
+Este repositorio documenta un proceso de trabajo más que una estrategia final.
+
+La idea principal es separar dos necesidades distintas:
+
+1. `src/`: laboratorio de investigación sobre datasets reproducibles
+2. `freqtrade-docker/`: entorno de validación operativa con configuración separada del core
+
+La primera capa permite iterar sobre reglas, métricas y variantes con rapidez. La segunda permite comprobar una versión de esa línea de trabajo en un entorno más cercano a ejecución real, sin mezclar configuración local con el código de estrategia.
+
+El objetivo de esta fase es mantener un proceso simple y defendible:
+
+- comparar variantes con reglas simples y métricas consistentes
+- evitar optimización oportunista
+- documentar límites y riesgo de `overfitting`
+- cerrar la validación con una conclusión defendible
+
+## Qué se trabajó
+
+La validación principal sobre `Freqtrade` se centra en dos estrategias long-only para `crypto spot`:
 
 - `MiEstrategia`: versión base educativa, sencilla y fácil de depurar.
 - `MiEstrategiaFaseB`: traducción simple de la lógica swing desarrollada en fases previas del proyecto.
 
-La prioridad de esta fase ha sido:
+Los criterios de esta fase han sido:
 
 - no optimizar parámetros
 - mantener condiciones consistentes entre runs
@@ -24,6 +51,14 @@ La prioridad de esta fase ha sido:
 - `Docker Compose`
 - `Freqtrade`
 - `Binance spot`
+
+## Resultado principal
+
+- `MiEstrategia`: `No consistente`
+- `MiEstrategiaFaseB`: `Prometedora pero necesita más validación`
+- lectura global del repositorio: `Interesante pero no robusta`
+
+La mejor señal aparece en `MiEstrategiaFaseB` sobre `4h`, con mejor equilibrio entre retorno y drawdown que el resto de combinaciones observadas. Aun así, el comportamiento no se mantiene con la misma calidad en todos los `timeframes`, así que no hay base suficiente para una conclusión más fuerte.
 
 ## Estructura
 
@@ -41,24 +76,67 @@ trading-bot/
 │       └── strategies/
 │           └── my_strategy.py
 ├── src/
+│   ├── load_data.py
+│   ├── strategy.py
+│   ├── evaluation.py
+│   └── run_backtest.py
 ├── specs/
 └── tests/
 ```
+
+## Arquitectura del proyecto
+
+### `src/` y `tests/`: laboratorio cuantitativo
+
+La carpeta `src/` contiene la parte más controlada del repositorio:
+
+- descarga y carga de datos con `yfinance`
+- estrategias y benchmarks en `backtesting.py`
+- comparación `in-sample` / `out-of-sample`
+- reportes y tests automatizados
+
+Aquí está el trabajo de investigación: definición de reglas, comparación entre variantes y lectura de resultados.
+
+### `freqtrade-docker/`: validación operativa sobre crypto
+
+La carpeta `freqtrade-docker/` añade una capa de validación operativa:
+
+- configuración separada del código base
+- estrategias custom montadas en `user_data/strategies/`
+- backtesting multi-par en `Binance spot`
+- base preparada para `dry-run`
+
+No sustituye al laboratorio de `src/`. Se usa para comprobar comportamiento, reproducibilidad y flujo de trabajo en un entorno distinto.
+
+## Metodología de validación
+
+Se usó el mismo protocolo para todos los backtests de `Freqtrade`:
+
+- exchange: `Binance spot`
+- pares: `BTC/USDT`, `ETH/USDT`, `BNB/USDT`, `SOL/USDT`, `XRP/USDT`
+- `timerange`: `2024-04-01` a `2026-03-31`
+- sin cambios de parámetros entre runs
+- `max_open_trades = 1`
+- `stake_amount = 100 USDT`
+
+Notas metodológicas:
+
+- `MiEstrategiaFaseB` necesita más velas de arranque (`startup_candle_count = 220`)
+- para mantener una ventana efectiva comparable, el histórico se descargó con `--prepend`
+- no se hizo optimización de parámetros entre comparativas
 
 ## Qué hace cada estrategia
 
 ### `MiEstrategia`
 
-Estrategia base de aprendizaje:
+Estrategia base:
 
 - usa `EMA 12/26`
 - usa `RSI` como filtro de momentum
 - toma beneficios con `minimal_roi`
 - sale cuando la media rápida pierde fuerza o el `RSI` cae
 
-Ventaja: muy fácil de entender.
-
-Riesgo: depende bastante del `ROI` fijo y muestra sensibilidad al `timeframe`.
+Es fácil de seguir y sirve bien como referencia, pero depende bastante del `ROI` fijo y muestra sensibilidad al `timeframe`.
 
 ### `MiEstrategiaFaseB`
 
@@ -69,25 +147,7 @@ Versión más cercana a una lógica swing:
 - entrada por recuperación de `RSI`
 - salida por pérdida de tendencia o momentum
 
-Ventaja: conceptualmente más coherente como estrategia swing.
-
-Riesgo: no es estable en todos los `timeframes`; mejora mucho en `4h`, pero no mantiene la misma calidad en `1h`.
-
-## Protocolo de validación
-
-Se usó el mismo protocolo para todos los runs:
-
-- exchange: `Binance spot`
-- pares: `BTC/USDT`, `ETH/USDT`, `BNB/USDT`, `SOL/USDT`, `XRP/USDT`
-- `timerange`: `2024-04-01` a `2026-03-31`
-- sin cambios de parámetros entre runs
-- `max_open_trades = 1`
-- `stake_amount = 100 USDT`
-
-Nota metodológica:
-
-- `MiEstrategiaFaseB` necesita más velas de arranque (`startup_candle_count = 220`).
-- Para que la ventana efectiva fuese comparable, se descargó histórico previo con `--prepend`.
+La lógica es más coherente como estrategia swing, pero no mantiene el mismo comportamiento en todos los `timeframes`; mejora en `4h` y pierde calidad en `1h`.
 
 ## Resultados resumidos
 
@@ -100,6 +160,8 @@ Nota metodológica:
 | `MiEstrategiaFaseB` | `4h` | `9.26%` | `84` | `28.6%` | `2.49%` | `1.70` |
 | `MiEstrategiaFaseB` | `6h` | `4.23%` | `59` | `27.1%` | `4.64%` | `1.34` |
 
+Detalle adicional por par en `docs/freqtrade-validation.md`.
+
 ## Lectura honesta
 
 ### `MiEstrategia`
@@ -109,9 +171,7 @@ Nota metodológica:
 - `profit factor` cerca de `1.0` en todos los casos.
 - No parece robusta: el rendimiento depende bastante del `timeframe`.
 
-Decisión:
-
-- `No consistente`
+Conclusión: `No consistente`
 
 ### `MiEstrategiaFaseB`
 
@@ -120,13 +180,11 @@ Decisión:
 - Sigue siendo positiva en `6h`, pero con menor consistencia entre pares.
 - El mejor resultado aparece en un `timeframe` concreto, lo que obliga a desconfiar un poco.
 
-Decisión:
-
-- `Prometedora pero necesita más validación`
+Conclusión: `Prometedora pero necesita más validación`
 
 ## Riesgo de overfitting
 
-Sí, existe riesgo de `overfitting`, aunque no se hayan optimizado parámetros de forma agresiva.
+Existe riesgo de `overfitting`, aunque no se hayan optimizado parámetros de forma agresiva.
 
 Motivos:
 
@@ -135,7 +193,7 @@ Motivos:
 - en `6h` mantiene resultado positivo, pero depende más de pocos trades y de algunos pares concretos
 - la validación sigue limitada a un único exchange y un único universo pequeño de pares
 
-La conclusión razonable no es "funciona", sino:
+La lectura razonable no es "funciona", sino:
 
 - hay una hipótesis de trabajo interesante en `4h`
 - todavía no hay evidencia suficiente para llamarla robusta
@@ -170,29 +228,39 @@ docker compose run --rm freqtrade backtesting --config /freqtrade/user_data/conf
 
 ## Conclusión final
 
-Este proyecto no demuestra una estrategia lista para producción.
+No hay evidencia suficiente para considerar la estrategia apta para producción.
 
-Sí demuestra algo más útil para portfolio junior:
+El valor del repositorio está en el proceso de validación:
 
-- que sabes montar un entorno reproducible con `Freqtrade + Docker`
-- que sabes separar configuración, estrategia y core
-- que sabes validar en varios `timeframes`
-- que sabes contrastar varios pares
-- que sabes cerrar una conclusión honesta aunque el resultado no sea espectacular
-
-Conclusión final del proyecto:
-
-- `Interesante pero no robusta`
+- separación entre investigación y validación operativa
+- entorno reproducible con `Freqtrade + Docker`
+- separación entre configuración, estrategia y core
+- comparación entre varios `timeframes`
+- contraste entre varios pares
+- documentación explícita de límites y resultados
 
 La mejor candidata actual es `MiEstrategiaFaseB` en `4h`, pero necesita más validación antes de merecer cualquier confianza práctica.
 
 ## Siguiente paso prudente
 
-Si se quisiera estirar un poco más la validación sin caer en optimización oportunista, el siguiente paso razonable sería:
+El siguiente paso razonable, sin cambiar parámetros, sería:
 
 - `forward test` corto en `dry-run`
 - mismo conjunto de pares
 - mismo `timeframe` (`4h`)
 - sin tocar parámetros
 
-Eso serviría para comprobar estabilidad operativa, no para declarar la estrategia apta para `live`.
+Eso serviría para comprobar estabilidad operativa, no para justificar uso en `live`.
+
+## Ejecución
+
+Para la parte de `Freqtrade`, los comandos principales están documentados en `freqtrade-docker/README.md`.
+
+Resumen rápido:
+
+```bash
+cp .env.example .env
+docker compose up -d freqtrade
+docker compose run --rm freqtrade download-data --prepend --config /freqtrade/user_data/config.validation.json --timeframe 4h --timerange 20240101-20260331
+docker compose run --rm freqtrade backtesting --config /freqtrade/user_data/config.validation.json --strategy MiEstrategiaFaseB --timeframe 4h --timerange 20240401-20260331
+```
