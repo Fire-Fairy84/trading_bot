@@ -46,15 +46,15 @@
     }
   ],
   "api_server": {
-    "enabled": true,
-    "listen_ip_address": "0.0.0.0",
+    "enabled": false,
+    "listen_ip_address": "127.0.0.1",
     "listen_port": 8080,
     "verbosity": "error",
-    "enable_openapi": true,
-    "jwt_secret_key": "cambia-esto-en-tu-config-local",
+    "enable_openapi": false,
+    "jwt_secret_key": "set-this-locally-before-enabling-api",
     "CORS_origins": [],
-    "username": "freqtrade",
-    "password": "freqtrade"
+    "username": "set-locally",
+    "password": "set-locally"
   },
   "bot_name": "mi-freqtrade-validation",
   "initial_state": "running",
