@@ -1,3 +1,6 @@
+# Dependencias para `src/` y `tests/` en el entorno Python local.
+# La parte de `Freqtrade` no se instala desde aquí: usa la imagen oficial
+# definida en `freqtrade-docker/` para mantener ambos entornos separados.
 backtesting==0.6.5
 pandas==2.2.3
 python-dotenv==1.0.1

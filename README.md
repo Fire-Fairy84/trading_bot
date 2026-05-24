@@ -52,6 +52,15 @@ Los criterios de esta fase han sido:
 - `Freqtrade`
 - `Binance spot`
 
+## Entornos
+
+El repositorio usa dos entornos distintos a propósito:
+
+- `requirements.txt` cubre `src/` y `tests/`, es decir, la parte local de investigación con `backtesting.py`
+- `freqtrade-docker/` usa la imagen oficial de `Freqtrade`, así que su runtime y sus dependencias no se mezclan con el entorno Python local
+
+La separación evita acoplar el laboratorio de investigación al entorno operativo de `Freqtrade` y deja más claro qué parte se ejecuta en cada sitio.
+
 ## Resultado principal
 
 - `MiEstrategia`: `No consistente`
