@@ -7,6 +7,23 @@
 - requested timerange: `2024-04-01` to `2026-03-31`
 - config: [config.validation.json](/Users/esther/Proyectos/trading-bot/freqtrade-docker/user_data/config.validation.json)
 
+## Compact Methodology Summary
+
+| Field | Value |
+| --- | --- |
+| dataset | `Binance spot` with `BTC/USDT`, `ETH/USDT`, `BNB/USDT`, `SOL/USDT`, `XRP/USDT` |
+| period | `2024-04-01` to `2026-03-31` |
+| costs and conditions | `stake_amount = 100 USDT`, `max_open_trades = 1`, same parameters across all runs |
+| comparison criteria | same validation protocol for both strategies; comparison by `timeframe`, `profit total`, `trades`, `win rate`, `max drawdown`, and `profit factor` |
+| main conclusion | `MiEstrategiaFaseB` in `4h` is the strongest current candidate, but the project remains `Interesante pero no robusta` |
+
+## Main Limits
+
+- single exchange
+- small pair universe
+- clear `timeframe` sensitivity
+- `overfitting` risk even without aggressive parameter optimization
+
 ## Metrics Summary
 
 | Strategy | Timeframe | Profit total | Trades | Win rate | Max drawdown | Profit factor |

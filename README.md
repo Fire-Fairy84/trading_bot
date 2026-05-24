@@ -125,6 +125,23 @@ Notas metodológicas:
 - para mantener una ventana efectiva comparable, el histórico se descargó con `--prepend`
 - no se hizo optimización de parámetros entre comparativas
 
+## Resumen metodológico
+
+| Campo | Valor |
+| --- | --- |
+| dataset | `Binance spot` con `BTC/USDT`, `ETH/USDT`, `BNB/USDT`, `SOL/USDT`, `XRP/USDT` |
+| periodo | `2024-04-01` a `2026-03-31` |
+| costes y condiciones | `stake_amount = 100 USDT`, `max_open_trades = 1`, mismos parámetros en todos los runs |
+| criterio de comparación | mismo protocolo para ambas estrategias; comparación por `timeframe`, `profit total`, `trades`, `win rate`, `max drawdown` y `profit factor` |
+| principal conclusión | `MiEstrategiaFaseB` en `4h` es la mejor candidata actual, pero el proyecto sigue siendo `Interesante pero no robusta` |
+
+Límites principales:
+
+- un único exchange
+- un universo pequeño de pares
+- sensibilidad clara al `timeframe`
+- riesgo de `overfitting` aunque no haya optimización agresiva
+
 ## Qué hace cada estrategia
 
 ### `MiEstrategia`
