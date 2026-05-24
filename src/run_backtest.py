@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import argparse
+from dataclasses import dataclass
 from pathlib import Path
 import warnings
 
@@ -19,14 +21,50 @@ from load_data import download_ohlcv, load_ohlcv
 
 
 DEFAULT_SYMBOL = "SPY"
+DEFAULT_INTERVAL = "1d"
 DEFAULT_START = "2015-01-01"
 DEFAULT_END = "2025-01-01"
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 
 
-def build_demo_data_dict(dataframe: pd.DataFrame) -> dict[str, pd.DataFrame]:
+@dataclass(frozen=True)
+class RunSettings:
+    symbol: str = DEFAULT_SYMBOL
+    interval: str = DEFAULT_INTERVAL
+    start: str = DEFAULT_START
+    end: str = DEFAULT_END
+    dataset_name: str | None = None
+
+    @property
+    def resolved_dataset_name(self) -> str:
+        return self.dataset_name or f"{self.symbol}_{self.interval}"
+
+    @property
+    def local_csv_path(self) -> Path:
+        return Path(__file__).resolve().parent.parent / "data" / f"{self.symbol}_{self.interval}.csv"
+
+
+def parse_args() -> RunSettings:
+    """Parsea argumentos opcionales para no dejar el runner clavado a SPY."""
+    parser = argparse.ArgumentParser(description="Run backtests for a local or downloaded OHLCV dataset.")
+    parser.add_argument("--symbol", default=DEFAULT_SYMBOL)
+    parser.add_argument("--interval", default=DEFAULT_INTERVAL)
+    parser.add_argument("--start", default=DEFAULT_START)
+    parser.add_argument("--end", default=DEFAULT_END)
+    parser.add_argument("--dataset-name")
+    args = parser.parse_args()
+    return RunSettings(
+        symbol=args.symbol,
+        interval=args.interval,
+        start=args.start,
+        end=args.end,
+        dataset_name=args.dataset_name,
+    )
+
+
+def build_data_dict(dataset_name: str, dataframe: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """Devuelve una estructura lista para usar con run_all_tests()."""
-    return {"SPY_1d": dataframe}
+    return {dataset_name: dataframe}
 
 
 def save_reports(summary: pd.DataFrame, dataset_name: str) -> tuple[Path, Path]:
@@ -69,25 +107,25 @@ def save_html_reports(
     return html_paths
 
 
-def load_demo_dataset() -> pd.DataFrame:
-    """Usa primero el CSV local para no depender de descarga en cada ejecución."""
-    local_csv_path = Path(__file__).resolve().parent.parent / "data" / f"{DEFAULT_SYMBOL}_1d.csv"
-    csv_path = local_csv_path
+def load_dataset(settings: RunSettings) -> tuple[pd.DataFrame, Path]:
+    """Usa primero el CSV local y descarga solo si el dataset no existe."""
+    csv_path = settings.local_csv_path
 
-    if not local_csv_path.exists():
+    if not csv_path.exists():
         csv_path = download_ohlcv(
-            symbol=DEFAULT_SYMBOL,
-            start=DEFAULT_START,
-            end=DEFAULT_END,
-            interval="1d",
+            symbol=settings.symbol,
+            start=settings.start,
+            end=settings.end,
+            interval=settings.interval,
         )
 
-    return load_ohlcv(csv_path)
+    return load_ohlcv(csv_path), csv_path
 
 
 def print_compact_console_summary(
     dataset_name: str,
     dataframe: pd.DataFrame,
+    data_csv_path: Path,
     summary: pd.DataFrame,
     csv_path: Path,
     md_path: Path,
@@ -97,7 +135,7 @@ def print_compact_console_summary(
     print(f"Dataset: {dataset_name}")
     print(f"Filas: {len(dataframe)}")
     print(f"Rango: {dataframe.index.min().date()} -> {dataframe.index.max().date()}")
-    print(f"CSV datos: {Path('data') / f'{DEFAULT_SYMBOL}_1d.csv'}")
+    print(f"CSV datos: {data_csv_path}")
     print(f"Resumen CSV: {csv_path}")
     print(f"Resumen Markdown: {md_path}")
     print("Reportes HTML:")
@@ -121,14 +159,17 @@ def print_compact_console_summary(
 
 
 def main() -> None:
-    """Ejemplo completo de uso sobre un dataset diario de SPY."""
+    """Ejecuta el flujo completo de backtesting sobre un dataset configurable."""
     warnings.filterwarnings(
         "ignore",
         category=FutureWarning,
         module=r"backtesting\..*",
     )
 
-    dataframe = load_demo_dataset()
+    settings = parse_args()
+    dataset_name = settings.resolved_dataset_name
+
+    dataframe, data_csv_path = load_dataset(settings)
 
     config = BacktestConfig(
         initial_cash=10_000,
@@ -137,13 +178,14 @@ def main() -> None:
         split_ratio=0.7,
     )
 
-    data_dict = build_demo_data_dict(dataframe)
+    data_dict = build_data_dict(dataset_name, dataframe)
     summary = run_all_tests(data_dict, config, strategy_names=SWING_VARIANT_NAMES)
-    csv_report_path, markdown_report_path = save_reports(summary, "SPY_1d")
-    html_report_paths = save_html_reports("SPY_1d", dataframe, config)
+    csv_report_path, markdown_report_path = save_reports(summary, dataset_name)
+    html_report_paths = save_html_reports(dataset_name, dataframe, config)
     print_compact_console_summary(
-        "SPY_1d",
+        dataset_name,
         dataframe,
+        data_csv_path,
         summary,
         csv_report_path,
         markdown_report_path,
