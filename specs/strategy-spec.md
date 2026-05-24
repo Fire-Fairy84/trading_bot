@@ -1,5 +1,7 @@
 # Strategy Spec
 
+Esta especificación pertenece a la capa `src/` del repositorio. Describe la lógica y los criterios del laboratorio con `backtesting.py`, no la configuración operativa de `Freqtrade`.
+
 ## Objective
 
 El objetivo de esta estrategia es validar si una lógica swing long-only, basada en tendencia de medio plazo y confirmación de momentum, puede ofrecer un equilibrio razonable entre retorno, drawdown y estabilidad operativa frente a benchmarks simples.

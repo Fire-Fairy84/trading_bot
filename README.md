@@ -226,7 +226,7 @@ La lectura razonable no es "funciona", sino:
 
 ## Cómo ejecutar Freqtrade
 
-Desde [freqtrade-docker](/Users/esther/Proyectos/trading-bot/freqtrade-docker):
+Desde [`freqtrade-docker/`](freqtrade-docker/):
 
 ```bash
 cp .env.example .env

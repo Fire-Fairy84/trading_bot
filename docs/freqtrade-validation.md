@@ -5,7 +5,7 @@
 - exchange: `Binance spot`
 - pairs: `BTC/USDT`, `ETH/USDT`, `BNB/USDT`, `SOL/USDT`, `XRP/USDT`
 - requested timerange: `2024-04-01` to `2026-03-31`
-- config: [config.validation.json](/Users/esther/Proyectos/trading-bot/freqtrade-docker/user_data/config.validation.json)
+- config: [`config.validation.json`](../freqtrade-docker/user_data/config.validation.json)
 
 ## Compact Methodology Summary
 
